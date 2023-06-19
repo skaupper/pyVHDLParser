@@ -258,7 +258,7 @@ class InterfaceObjectBlock(Block):
 			parserState.Counter =       0
 			return
 		elif isinstance(token, CharacterToken):
-			if token == '(':
+			if token == '(' or token == ';':
 			# 	parserState.NewToken = BoundaryToken(fromExistingToken=token)
 			# 	parserState.NewBlock = cls(parserState.LastBlock, parserState.TokenMarker,
 			# 														 endToken=parserState.NewToken.PreviousToken)
