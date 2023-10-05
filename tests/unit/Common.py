@@ -324,6 +324,7 @@ class BlockLinking(ITestcase): #, ExpectedDataMixin):
 		lastToken: Token = startToken
 
 		for block in blockIterator:
+			print(block)
 			if isinstance(block, EndOfDocumentBlock):
 				endBlock = block
 				break

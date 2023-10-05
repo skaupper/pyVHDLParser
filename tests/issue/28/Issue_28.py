@@ -27,77 +27,25 @@
 # limitations under the License.                                                                                       #
 # ==================================================================================================================== #
 #
-from pyVHDLParser.Token.Parser  import Tokenizer, TokenizerException
-from pyVHDLParser.Token         import StartOfDocumentToken, EndOfDocumentToken, Token
-from pyVHDLParser.Blocks        import StartOfDocumentBlock, EndOfDocumentBlock, TokenToBlockParser, MetaBlock, Block, BlockParserException
+from pathlib  import Path
+from unittest import TestCase
+from pytest   import mark
 
-from tests.Interfaces import ITestcase
+from tests.IssueTester import SingleFileIssue
+from tests.unit.Common import Initializer
 
-from typing import Optional
-
-
-class TokenizerChecks(ITestcase): #, ExpectedDataMixin):
-	def check_TokenLinking(self) -> None:
-		# test['name']
-		tokenStream = Tokenizer.GetVHDLTokenizer(self.code)
-
-		tokenIterator = iter(tokenStream)
-		startToken =    next(tokenIterator)
-
-		self.assertIsInstance(startToken, StartOfDocumentToken, msg=f"First token is not StartOfDocumentToken: {startToken}")
-		self.assertIsNone(startToken.PreviousToken, msg="First token has no open start.")
-
-		lastToken: Token = startToken
-		endToken:  Token = None
-
-		for token in tokenIterator:
-			if isinstance(token, EndOfDocumentToken):
-				endToken = token
-				break
-
-			self.assertEqual(lastToken.NextToken, token, msg=f"Last token is not connected to the current token: {token}")
-			self.assertEqual(lastToken, token.PreviousToken, msg=f"Current token is not connected to lastToken: {token}")
-
-			lastToken = token
-		else:
-			self.fail(msg="No EndOfDocumentToken found.")
-
-		self.assertIsInstance(endToken, EndOfDocumentToken, msg=f"End token is not EndOfDocumentToken: {endToken}")
-		self.assertEqual(lastToken.NextToken, endToken, msg=f"Last token is not connected to the end token: {lastToken}")
-		self.assertEqual(lastToken, endToken.PreviousToken, msg=f"End token is not connected to lastToken: {lastToken}")
-		self.assertIsNone(endToken.NextToken, msg=f"End token has no open end: {endToken.NextToken}")
+if __name__ == "__main__":  # pragma: no cover
+	print("ERROR: you called a testcase declaration file as an executable module.")
+	print("Use: 'python -m unitest <testcase module>'")
+	exit(1)
 
 
-class BlockParserChecks(ITestcase): #, ExpectedDataMixin):
-	def check_BlockLinking(self) -> None:
-		# test['name']
-		tokenStream = Tokenizer.GetVHDLTokenizer(self.code)
-		blockStream = TokenToBlockParser(tokenStream)()
+def setUpModule():
+	Initializer()
 
-		blockIterator = iter(blockStream)
-		startBlock = next(blockIterator)
 
-		self.assertIsInstance(startBlock, StartOfDocumentBlock, msg=f"First token is not StartOfDocumentBlock: {startBlock}")
-		self.assertIsNone(startBlock._previousBlock, msg="First block has no open start.")
-
-		lastBlock: Block = startBlock
-		endBlock:  Optional[Block] = None
-
-		for block in blockIterator:
-			print(block)
-			if isinstance(block, EndOfDocumentBlock):
-				endBlock = block
-				break
-
-			self.assertEqual(lastBlock.NextBlock, block, msg=f"Last block is not connected to the current block: {block}")
-			self.assertEqual(lastBlock, block.PreviousBlock, msg=f"Current block is not connected to lastBlock: {block}")
-
-			lastBlock = block
-		else:
-			self.fail(msg="No EndOfDocumentBlock found.")
-
-		assert endBlock is not None
-		self.assertIsInstance(endBlock, EndOfDocumentToken, msg=f"End block is not EndOfDocumentBlock: {endBlock}")
-		self.assertEqual(lastBlock.NextToken, endBlock, msg=f"Last block is not connected to the end block: {lastBlock}")
-		self.assertEqual(lastBlock, endBlock.PreviousBlock, msg=f"End block is not connected to lastBlock: {lastBlock}")
-		self.assertIsNone(endBlock.NextBlock, msg=f"End block has no open end: {endBlock.NextBlock}")
+class Issue_28(TestCase, SingleFileIssue):
+	def test_Tokenizer(self):
+		file = Path(__file__).with_suffix(".vhdl")
+		self.check_Tokenizer(file)
+		self.check_BlockParser(file)

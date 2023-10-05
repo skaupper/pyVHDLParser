@@ -27,7 +27,7 @@
 # limitations under the License.                                                                                       #
 # ==================================================================================================================== #
 #
-from tests.Linking import TokenizerChecks
+from tests.Linking import TokenizerChecks, BlockParserChecks
 
 
 if __name__ == "__main__":  # pragma: no cover
@@ -35,7 +35,7 @@ if __name__ == "__main__":  # pragma: no cover
 	print("Use: 'python -m unitest <testcase module>'")
 	exit(1)
 
-class SingleFileIssue(TokenizerChecks):
+class SingleFileIssue(TokenizerChecks, BlockParserChecks):
 	def check_Tokenizer(self, file):
 		self.assertTrue(file.exists(), f"Sourcefile '{file!s}' does not exist.")
 
@@ -43,3 +43,11 @@ class SingleFileIssue(TokenizerChecks):
 			self.code = fileHandle.read()
 
 		self.check_TokenLinking()
+
+	def check_BlockParser(self, file):
+		self.assertTrue(file.exists(), f"Sourcefile '{file!s}' does not exist.")
+
+		with file.open('r') as fileHandle:
+			self.code = fileHandle.read()
+
+		self.check_BlockLinking()

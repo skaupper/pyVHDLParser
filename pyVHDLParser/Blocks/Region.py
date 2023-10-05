@@ -27,7 +27,7 @@
 # limitations under the License.                                                                                       #
 # ==================================================================================================================== #
 #
-from typing import Any
+from typing import Any, Optional
 
 from pyTooling.Decorators                 import export
 
@@ -45,8 +45,9 @@ from pyVHDLParser.Blocks.Generic         import EndBlock, BeginBlock
 class DeclarativeRegion(metaclass=MetaBlock):
 	"""Base-class for all declarative region blocks."""
 
-	BEGIN_BLOCK: BeginBlock
-	END_BLOCK:   EndBlock
+	EXPECT_BEGIN_KEYWORD: bool = True
+	BEGIN_BLOCK:          BeginBlock
+	END_BLOCK:            EndBlock
 
 	KEYWORDS: Any  # TODO: what type?
 
@@ -95,7 +96,7 @@ class DeclarativeRegion(metaclass=MetaBlock):
 					parserState.TokenMarker = newToken
 					return
 
-			if tokenValue == "begin":
+			if tokenValue == "begin" and cls.EXPECT_BEGIN_KEYWORD:
 				parserState.NewToken =  BeginKeyword(fromExistingToken=token)
 				parserState.NewBlock =  cls.BEGIN_BLOCK(parserState.LastBlock, parserState.NewToken)
 				parserState.NextState = cls.BEGIN_BLOCK.stateStatementRegion

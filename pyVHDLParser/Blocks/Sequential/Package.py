@@ -29,16 +29,17 @@
 #
 from pyTooling.Decorators           import export
 
-from pyVHDLParser.Token             import LinebreakToken, WordToken, WhitespaceToken, CommentToken, MultiLineCommentToken
+from pyVHDLParser.Token             import LinebreakToken, WordToken, WhitespaceToken, CommentToken, MultiLineCommentToken, IndentationToken
 from pyVHDLParser.Token.Keywords    import PackageKeyword, IsKeyword, EndKeyword, GenericKeyword, BodyKeyword, UseKeyword, VariableKeyword, SignalKeyword
-from pyVHDLParser.Token.Keywords    import BoundaryToken, IdentifierToken
+from pyVHDLParser.Token.Keywords    import BoundaryToken, IdentifierToken, TypeKeyword
 from pyVHDLParser.Token.Keywords    import ConstantKeyword, SharedKeyword, ProcedureKeyword, FunctionKeyword, PureKeyword, ImpureKeyword
 from pyVHDLParser.Blocks            import BlockParserException, Block, CommentBlock, TokenToBlockParser
 from pyVHDLParser.Blocks.Whitespace     import LinebreakBlock, IndentationBlock, WhitespaceBlock
 from pyVHDLParser.Blocks.Region    import SequentialDeclarativeRegion
-from pyVHDLParser.Blocks.Generic   import EndBlock as EndBlockBase
+from pyVHDLParser.Blocks.Generic   import EndBlock as EndBlockBase, BeginBlock
 from pyVHDLParser.Blocks.Sequential import PackageBody
 from pyVHDLParser.Blocks.List       import GenericList
+from pyVHDLParser.Blocks.Type.Type       import TypeBlock
 
 
 @export
@@ -47,20 +48,57 @@ class EndBlock(EndBlockBase):
 	KEYWORD_IS_OPTIONAL = True
 	EXPECTED_NAME =       KEYWORD.__KEYWORD__
 
+@export
+class HeaderBlock(Block):
+	@classmethod
+	def stateStatementRegion(cls, parserState: TokenToBlockParser):
+		token = parserState.Token
+		if isinstance(token, WhitespaceToken):
+			blockType =                 IndentationBlock if isinstance(token, IndentationToken) else WhitespaceBlock
+			parserState.NewBlock =      blockType(parserState.LastBlock, token)
+			parserState.TokenMarker =   None
+			return
+		elif isinstance(token, LinebreakToken):
+			parserState.NewBlock =      LinebreakBlock(parserState.LastBlock, token)
+			parserState.TokenMarker =   None
+			return
+		elif isinstance(token, CommentToken):
+			parserState.NewBlock =      CommentBlock(parserState.LastBlock, token)
+			parserState.TokenMarker =   None
+			return
+		elif isinstance(token, WordToken):
+			tokenValue = token.Value.lower()
+
+			if tokenValue == GenericKeyword.__KEYWORD__:
+				newToken =                GenericKeyword(fromExistingToken=token)
+				parserState.PushState =   GenericList.OpenBlock.stateGenericKeyword
+				parserState.NewToken =    newToken
+				parserState.TokenMarker = newToken
+				return
+
+			if tokenValue == "end":
+				parserState.NewToken =  EndKeyword(fromExistingToken=token)
+				parserState.NextState = EndBlock.stateEndKeyword
+				return
+
+			parserState.NextState = DeclarativeRegion.stateDeclarativeRegion
+			DeclarativeRegion.stateDeclarativeRegion(parserState)
+
+
 
 @export
 class DeclarativeRegion(SequentialDeclarativeRegion):
-	END_BLOCK = EndBlock
+	EXPECT_BEGIN_KEYWORD = False
+	END_BLOCK =            EndBlock
 
 	@classmethod
 	def __cls_init__(cls):
 		super().__cls_init__()
 
-		# TODO: use key assignment: a[b] = c
 		cls.KEYWORDS.update({
-			# Keyword         Transition
-			GenericKeyword:  GenericList.OpenBlock.stateGenericKeyword
+			TypeKeyword: TypeBlock.stateTypeKeyword,
 		})
+
 
 @export
 class NameBlock(Block):
@@ -138,7 +176,7 @@ class NameBlock(Block):
 			parserState.NewToken =      IsKeyword(fromExistingToken=token)
 			parserState.NewBlock =      cls(parserState.LastBlock, parserState.TokenMarker, endToken=parserState.NewToken)
 			parserState.TokenMarker =   None
-			parserState.NextState =     DeclarativeRegion.stateDeclarativeRegion
+			parserState.NextState =     HeaderBlock.stateStatementRegion
 			return
 		elif isinstance(token, LinebreakToken):
 			if not (isinstance(parserState.LastBlock, CommentBlock) and isinstance(parserState.LastBlock.StartToken, MultiLineCommentToken)):
